@@ -4,6 +4,7 @@ import sys
 
 from PIL import Image
 
+
 class SourceImage:
     def __init__(self, path):
         self.img = Image.open(path)
@@ -43,6 +44,16 @@ class SourceImage:
             return False
         return True
 
+    @staticmethod
+    def __linear_interp(v0, v1, f):
+        return (v0 * f) + (v1 * (1.0 - f))
+
+    @staticmethod
+    def __bilinear_interp(v00, v01, v10, v11, fv, fh):
+        v0 = ((v00 * fh) + (v01 * (1.0 - fh)))
+        v1 = ((v10 * fh) + (v11 * (1.0 - fh)))
+        return SourceImage.__linear_interp(v0, v1, fv)
+
     def get_red(self, x, y):
         if x == 0 or x == self.width - 1:
             return 0
@@ -53,18 +64,17 @@ class SourceImage:
         elif y % 2 == 0 and not x % 2 == 0: # Between red pixels horizontally
             r0 = float(self.get_pixel(x - 1, y))
             r1 = float(self.get_pixel(x + 1, y))
-            return int(round((r0 * 0.5) + (r1 * 0.5)))
+            return int(round(self.__linear_interp(r0, r1, .5)))
         elif not y % 2 == 0 and x % 2 == 0: # Between red pixels vertically
             r0 = float(self.get_pixel(x, y - 1))
             r1 = float(self.get_pixel(x, y + 1))
-            return int(round((r0 * 0.5) + (r1 * 0.5)))
+            return int(round(self.__linear_interp(r0, r1, .5)))
         elif self.is_blue_pixel(x, y):
             r00 = float(self.get_pixel(x - 1, y - 1))
             r01 = float(self.get_pixel(x + 1, y - 1))
-
             r10 = float(self.get_pixel(x - 1, y + 1))
             r11 = float(self.get_pixel(x + 1, y + 1))
-            return int(round((((r00 * 0.5) + (r01 * 0.5)) * 0.5) + (((r10 * 0.5) + (r11 * 0.5)) * 0.5)))
+            return int(round(self.__bilinear_interp(r00, r01, r10, r11, 0.5, 0.5)))
         else:
             return 0
 
@@ -78,10 +88,9 @@ class SourceImage:
         elif self.is_red_pixel(x, y) or self.is_blue_pixel(x, y):
             r00 = float(self.get_pixel(x - 1, y))
             r01 = float(self.get_pixel(x, y - 1))
-
             r10 = float(self.get_pixel(x + 1, y))
             r11 = float(self.get_pixel(x, y + 1))
-            return int(round((((r00 * 0.5) + (r01 * 0.5)) * 0.5) + (((r10 * 0.5) + (r11 * 0.5)) * 0.5)))
+            return int(round(self.__bilinear_interp(r00, r01, r10, r11, 0.5, 0.5)))
         else:
             return 0
 
@@ -95,18 +104,17 @@ class SourceImage:
         elif self.is_red_pixel(x, y):
             r00 = float(self.get_pixel(x - 1, y - 1))
             r01 = float(self.get_pixel(x + 1, y - 1))
-
             r10 = float(self.get_pixel(x - 1, y + 1))
             r11 = float(self.get_pixel(x + 1, y + 1))
-            return int(round((((r00 * 0.5) + (r01 * 0.5)) * 0.5) + (((r10 * 0.5) + (r11 * 0.5)) * 0.5)))
+            return int(round(self.__bilinear_interp(r00, r01, r10, r11, 0.5, 0.5)))
         elif not y % 2 == 0 and x % 2 == 0: # Between blue pixels horizontally
             r0 = float(self.get_pixel(x - 1, y))
             r1 = float(self.get_pixel(x + 1, y))
-            return int(round((r0 * 0.5) + (r1 * 0.5)))
+            return int(round(self.__linear_interp(r0, r1, .5)))
         elif y % 2 == 0 and  not x % 2 == 0: # Between blue pixels vertically
             r0 = float(self.get_pixel(x, y - 1))
             r1 = float(self.get_pixel(x, y + 1))
-            return int(round((r0 * 0.5) + (r1 * 0.5)))
+            return int(round(self.__linear_interp(r0, r1, .5)))
         else:
             return 0
 
@@ -131,7 +139,6 @@ class DestImage:
 
     def show(self):
         self.img.show()
-
 
 
 if __name__ == "__main__":
